@@ -1,6 +1,6 @@
 {
   ".": {
-    "release-type": "terraform",
+    "release-type": "simple",
     "version": "1.0.0"
   }
 }
