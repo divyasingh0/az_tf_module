@@ -1,21 +1,54 @@
 terraform {
-  required_version = ">= 1.4.0"
+  required_version = ">= 1.3.0"
 }
- 
+
+
+module "governance" {
+  for_each = var.storage_accounts
+  source   = "../governance_folder"
+  resource_name_config = {
+
+    resource_type = var.resource_name_config.resource_type
+
+    application = var.resource_name_config.application
+
+    environment = var.resource_name_config.environment
+
+    region = var.resource_name_config.region
+
+    cloud = var.resource_name_config.cloud
+
+    instance = each.value.instance
+
+    use_hyphen = var.resource_name_config.use_hyphen
+
+  }
+
+
+  mandatory_tags         = tomap(var.mandatory_tags)
+  resource_specific_tags = try(each.value.resource_specific_tags, {})
+  optional_tags          = try(each.value.optional_tags, {})
+  custom_tags            = try(each.value.custom_tags, {})
+
+}
+
+
+
+
 resource "azurerm_storage_account" "stgaccount" {
-  for_each                         = var.storage_accounts
-  name                             = each.key
-  resource_group_name              = each.value.rgname
-  location                         = each.value.location
-  account_tier                     = each.value.account_tier
-  account_replication_type         = each.value.account_replication_type
-  min_tls_version                  = each.value.min_tls_version
-  is_hns_enabled                   = each.value.is_hns_enabled
-  allow_nested_items_to_be_public  = each.value.allow_nested_items_to_be_public
-  sftp_enabled                     = each.value["sftp_enabled"]
-  tags                             = each.value["sa_tags"]
+  for_each                        = var.storage_accounts
+  name                            = module.governance[each.key].final_resource_name
+  resource_group_name             = each.value.rgname
+  location                        = each.value.location
+  account_tier                    = each.value.account_tier
+  account_replication_type        = each.value.account_replication_type
+  min_tls_version                 = each.value.min_tls_version
+  is_hns_enabled                  = each.value.is_hns_enabled
+  allow_nested_items_to_be_public = each.value.allow_nested_items_to_be_public
+  sftp_enabled                    = each.value["sftp_enabled"]
+  #   tags                             = each.value["sa_tags"]
   cross_tenant_replication_enabled = each.value.cross_tenant_replication_enabled
- 
+
   blob_properties {
     delete_retention_policy {
       days = each.value["blob_retention_days"]
@@ -34,7 +67,7 @@ resource "azurerm_storage_account" "stgaccount" {
       }
     }
   }
- 
+
   dynamic "network_rules" {
     for_each = try(each.value.network_rules, null) != null ? [1] : []
     content {
@@ -42,7 +75,7 @@ resource "azurerm_storage_account" "stgaccount" {
       ip_rules                   = each.value.network_rules.ip_rules == "" ? null : each.value.network_rules.ip_rules
       virtual_network_subnet_ids = each.value.network_rules.virtual_network_subnet_ids == "" ? null : each.value.network_rules.virtual_network_subnet_ids
       bypass                     = each.value.network_rules.bypass == "" ? null : each.value.network_rules.bypass
- 
+
       dynamic "private_link_access" {
         for_each = coalesce(lookup(each.value.network_rules, "private_link_access", null), [])
         content {
@@ -52,9 +85,10 @@ resource "azurerm_storage_account" "stgaccount" {
       }
     }
   }
-  
- 
+
   lifecycle {
     ignore_changes = [customer_managed_key, timeouts]
   }
+  tags = module.governance[each.key].final_tags
 }
+ 
