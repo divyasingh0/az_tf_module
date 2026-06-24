@@ -28,7 +28,7 @@ variable "subnets" {
     subnet_name                                   = string
     subnet_address_prefixes                       = list(string)
     subnet_rgname                                 = string
-    vnet_name                                     = string
+    vnet_key                                    = string
     private_endpoint_network_policies             = optional(string)
     private_link_service_network_policies_enabled = optional(bool, false)
     service_endpoints                             = optional(list(string))
@@ -39,7 +39,16 @@ variable "subnets" {
   description = "Azure Subnets"
 }
 
+resource "terraform_data" "subnet_validation" {
+  for_each = var.subnets
 
+  lifecycle {
+    precondition {
+      condition     = contains(keys(var.vnets), each.value.vnet_key)
+      error_message = "Subnet references a vnet_key that does not exist."
+    }
+  }
+}
 
 
 
@@ -55,7 +64,7 @@ variable "vnets" {
     #################################################
     # VNet Core
     #################################################
-    vnet_name          = string
+    # vnet_name          = string
     vnet_rgname        = string
     vnet_location      = string
     vnet_address_space = list(string)

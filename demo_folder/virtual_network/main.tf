@@ -27,7 +27,7 @@ module "governance" {
 resource "azurerm_virtual_network" "vnet" {
   for_each = var.vnets
 
-  name                = each.value.vnet_name   # ✅ FIXED
+  name = module.governance[each.key].final_resource_name
   resource_group_name = each.value.vnet_rgname
   location            = each.value.vnet_location
   address_space       = each.value.vnet_address_space
@@ -36,13 +36,13 @@ resource "azurerm_virtual_network" "vnet" {
   tags = module.governance[each.key].final_tags   # ✅ GOVERNANCE TAGS
 
   dynamic "ddos_protection_plan" {
-    for_each = each.value.enable_ddos_protection_plan == true ? [1] : []
+  for_each = each.value.enable_ddos_protection_plan != null ? [1] : []
 
-    content {
-      id     = each.value.enable_ddos_protection_plan.id
-      enable = each.value.enable_ddos_protection_plan.enable
-    }
+  content {
+    id     = each.value.enable_ddos_protection_plan.id
+    enable = each.value.enable_ddos_protection_plan.enable
   }
+}
 
 }
 
@@ -55,7 +55,7 @@ resource "azurerm_subnet" "subnets" {
   name                 = each.value.subnet_name   # ✅ FIXED
   address_prefixes     = each.value.subnet_address_prefixes
   resource_group_name  = each.value.subnet_rgname
-  virtual_network_name = each.value.vnet_name
+  virtual_network_name = azurerm_virtual_network.vnet[each.value.vnet_key].name
 
   private_endpoint_network_policies             = each.value.private_endpoint_network_policies
   private_link_service_network_policies_enabled = each.value.private_link_service_network_policies_enabled
@@ -74,7 +74,10 @@ resource "azurerm_subnet" "subnets" {
     }
   }
 
-  depends_on = [
-    azurerm_virtual_network.vnet
-  ]
+  # depends_on = [
+  #   azurerm_virtual_network.vnet
+  # ]
+
+
 }
+
