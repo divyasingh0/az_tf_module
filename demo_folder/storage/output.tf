@@ -21,5 +21,4 @@ output "primary_blob_endpoint" {
 output "primary_access_key" {
   description = "Blob endpoint"
   value       = { for stgaccount in azurerm_storage_account.stgaccount : stgaccount.name => stgaccount.primary_access_key }
-  sensitive = true
 }
